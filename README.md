@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ### Start Up
 
 First look into the `dataset_explore.ipynb` and get familiar with the data.
@@ -27,3 +28,6 @@ Open test_model.py, specify the saved model's path and the test dataset's path, 
 
 
 
+=======
+# nn-lab2
+>>>>>>> 3eb9b26d4ccfdfdc9166c433b186838cbf545345

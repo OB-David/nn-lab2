@@ -2,11 +2,11 @@ import mynn as nn
 import numpy as np
 from struct import unpack
 import gzip
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as pltS
 import pickle
 
-model = nn.models.Model_MLP()
-model.load_model(r'.\saved_models\best_model2.pickle')
+model = nn.models.Model_CNN()
+model.load_model(r'.\saved_models\CNN_model.pickle')
 
 test_images_path = r'.\dataset\MNIST\t10k-images-idx3-ubyte.gz'
 test_labels_path = r'.\dataset\MNIST\t10k-labels-idx1-ubyte.gz'

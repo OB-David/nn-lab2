@@ -74,133 +74,77 @@ class Model_MLP(Layer):
             pickle.dump(param_list, f)
         
 
+import numpy as np
+from mynn.op import Layer, conv2D, ReLU, Linear
+
 class Model_CNN(Layer):
-    """
-    A model with conv2D layers. Implement it using the operators you have written in op.py
-    """
-    def __init__(self, in_channels, out_channels, kernel_size=3, image_size=28, num_classes=10, lambda_list=None):
-        # 架构配置
-        self.in_channels = in_channels
+    def __init__(self, out_channels=4, kernel_size=3, image_size=28, num_classes=10):
+        super().__init__()
         self.out_channels = out_channels
+        self.out_channels2 = out_channels * 4
         self.kernel_size = kernel_size
         self.image_size = image_size
         self.num_classes = num_classes
 
-        # 计算两层卷积后的特征图尺寸
-        conv_h = image_size - kernel_size + 1
-        conv_h = conv_h - kernel_size + 1
-        conv_w = image_size - kernel_size + 1
-        conv_w = conv_w - kernel_size + 1
+        # 计算两次卷积后的空间尺寸
+        h1 = image_size - kernel_size + 1
+        h2 = h1 - kernel_size + 1
+        self.h2 = h2
+        flatten_dim = h2 * h2 * self.out_channels2
 
-        # 双层卷积（ 1-> 4 -> 16) +全连接结构，卷积层无padding，步长为1
-        self.conv1 = conv2D(in_channels= 1, out_channels= 4, kernel_size=kernel_size, stride=1, padding=0)
+        # 定义层
+        self.conv1 = conv2D(1, out_channels, kernel_size, stride=1, padding=0)
         self.relu1 = ReLU()
-        self.conv2 = conv2D(in_channels= 4, out_channels= 16, kernel_size=kernel_size, stride=1, padding=0)
+        self.conv2 = conv2D(out_channels, self.out_channels2, kernel_size, stride=1, padding=0)
         self.relu2 = ReLU()
-        # 全连接层： 16*conv_h*conv_w -> num_classes
-        self.fc = Linear(16 * conv_h * conv_w, num_classes)
-        
+        self.fc = Linear(flatten_dim, num_classes)
+
         self.layers = [self.conv1, self.relu1, self.conv2, self.relu2, self.fc]
-        self.feature_shape3 = None
 
     def __call__(self, X):
         return self.forward(X)
 
     def forward(self, X):
-        # Accept both flattened MNIST inputs [N, 784] and image tensors [N, C, H, W].
-        if X.ndim == 2:
-            # 将展平的输入重塑为图像张量，统一按照[N, C, H, W]格式处理
-            X = X.reshape(X.shape[0], self.in_channels, self.image_size, self.image_size)
-        elif X.ndim == 4:
-            # 本身就是图像张量，无需重塑
-            pass
+        batch = X.shape[0]
+        # 将 [batch, 784] reshape 为 [batch, 1, 28, 28]
+        X = X.reshape(batch, 1, self.image_size, self.image_size)
 
-        outputs = self.conv1(X)
-        outputs = self.relu1(outputs)
-        outputs = self.conv2(outputs)
-        outputs = self.relu2(outputs)
-
-        # Cache feature-map shape for backward reshape.
-        self.feature_shape3 = outputs.shape
-        outputs = outputs.reshape(outputs.shape[0], -1)
-        outputs = self.fc(outputs)
-        return outputs
+        out = X
+        for layer in self.layers:
+            out = layer.forward(out)
+            # 在 relu2 之后展平（为全连接做准备）
+            if layer is self.relu2:
+                out = out.reshape(batch, -1)
+        return out
 
     def backward(self, loss_grad):
-        # Reverse order of forward: fc -> unflatten -> relu -> conv.
-        grads = self.fc.backward(loss_grad)
-        grads = grads.reshape(self.feature_shape3)
-        grads = self.relu2.backward(grads)
-        grads = self.conv2.backward(grads)
-        grads = self.relu1.backward(grads)
-        grads = self.conv1.backward(grads)
+        grad = loss_grad
+        # 反向遍历各层
+        for layer in reversed(self.layers):
+            grad = layer.backward(grad)
+            # 全连接层返回的是 [batch, flatten_dim]，需要 reshape 回四维
+            if layer is self.fc:
+                grad = grad.reshape(-1, self.out_channels2, self.h2, self.h2)
+        return grad
 
-        return grads
-    
-    def load_model(self, param_list):
-        with open(param_list, 'rb') as f:
-            param_list = pickle.load(f)
-
-        # 重建架构配置
-        config = param_list[0]
-        self.__init__(
-            in_channels=config['in_channels'],
-            out_channels=config['out_channels'],
-            kernel_size=config['kernel_size'],
-            image_size=config['image_size'],
-            num_classes=config['num_classes']
-        )
-
-        self.conv1.W = param_list[1]['W']
-        self.conv1.b = param_list[1]['b']
-        self.conv1.params['W'] = self.conv1.W
-        self.conv1.params['b'] = self.conv1.b
-        self.conv1.weight_decay = param_list[1]['weight_decay']
-        self.conv1.weight_decay_lambda = param_list[1]['lambda']
-
-        self.conv2.W = param_list[2]['W']
-        self.conv2.b = param_list[2]['b']
-        self.conv2.params['W'] = self.conv2.W
-        self.conv2.params['b'] = self.conv2.b
-        self.conv2.weight_decay = param_list[2]['weight_decay']
-        self.conv2.weight_decay_lambda = param_list[2]['lambda']
-
-        self.fc.W = param_list[3]['W']
-        self.fc.b = param_list[3]['b']
-        self.fc.params['W'] = self.fc.W
-        self.fc.params['b'] = self.fc.b
-        self.fc.weight_decay = param_list[3]['weight_decay']
-        self.fc.weight_decay_lambda = param_list[3]['lambda']
+    def load_model(self, file_path):
+        with open(file_path, 'rb') as f:
+            param_list = pickle.load(f)   # 这里加载的就是保存时的参数列表
+        
+        idx = 0
+        for layer in self.layers:
+            if hasattr(layer, 'params') and layer.optimizable:
+                # 将参数列表中的对应字典赋值给当前层
+                if idx < len(param_list):
+                    for name in layer.params:
+                        if name in param_list[idx]:
+                            layer.params[name] = param_list[idx][name]
+                idx += 1
 
     def save_model(self, save_path):
-        # Save architecture config + trainable params.
-        param_list = [
-            {
-                'in_channels': self.in_channels,
-                'out_channels': self.out_channels,
-                'kernel_size': self.kernel_size,
-                'image_size': self.image_size,
-                'num_classes': self.num_classes,
-            },
-            {
-                'W': self.conv1.params['W'],
-                'b': self.conv1.params['b'],
-                'weight_decay': self.conv1.weight_decay,
-                'lambda': self.conv1.weight_decay_lambda,
-            },
-            {
-                'W': self.conv2.params['W'],
-                'b': self.conv2.params['b'],
-                'weight_decay': self.conv2.weight_decay,
-                'lambda': self.conv2.weight_decay_lambda,
-            },
-            {
-                'W': self.fc.params['W'],
-                'b': self.fc.params['b'],
-                'weight_decay': self.fc.weight_decay,
-                'lambda': self.fc.weight_decay_lambda,
-            },
-        ]
-
+        param_list = []
+        for layer in self.layers:
+            if hasattr(layer, 'params') and layer.optimizable:
+                param_list.append(layer.params)
         with open(save_path, 'wb') as f:
             pickle.dump(param_list, f)
