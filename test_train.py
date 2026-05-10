@@ -39,15 +39,32 @@ train_labs = train_labs[10000:]
 train_imgs = train_imgs / train_imgs.max()
 valid_imgs = valid_imgs / valid_imgs.max()
 
-# linear_model = nn.models.Model_MLP([train_imgs.shape[-1], 600, 10], 'ReLU', [1e-4, 1e-4])
-linear_model = nn.models.Model_CNN(out_channels=4, kernel_size=3, image_size=28, num_classes=10)
-optimizer = nn.optimizer.SGD(init_lr=0.06, model=linear_model)
-scheduler = nn.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[800, 2400, 4000], gamma=0.5)
+'''选择MLP/CNN进行训练'''
+# linear_model = nn.models.Model_MLP([train_imgs.shape[-1], 600, 10], 'ReLU', [1e-4, 1e-4])      # MLP
+linear_model = nn.models.Model_CNN()    # CNN
+
+'''选择SGD/MSGD进行训练'''
+optimizer = nn.optimizer.SGD(init_lr=0.06, model=linear_model)        # 标准SGD
+#optimizer = nn.optimizer.MomentGD(init_lr=0.06, model=linear_model, mu=0.9)     # 带动量的SGD
+
+scheduler = nn.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[800, 2400, 4000], gamma=0.5)   # 学习率梯度衰减
+
 loss_fn = nn.op.MultiCrossEntropyLoss(model=linear_model, max_classes=train_labs.max()+1)
 
 runner = nn.runner.RunnerM(linear_model, optimizer, nn.metric.accuracy, loss_fn, scheduler=scheduler)
 
-runner.train([train_imgs, train_labs], [valid_imgs, valid_labs], num_epochs=5, log_iters=100, save_dir=r'./best_models')
+'''进行训练，记得改变保存文件夹路径'''
+runner.train([train_imgs, train_labs], [valid_imgs, valid_labs], num_epochs=5, log_iters=100, save_dir=r'./CNN')   # 带动量的SGD训练CNN模型
+
+'''保存训练过程中的loss和accuracy曲线，记得改变保存文件名字'''
+with open(r'./CNN/train_loss.pickle', 'wb') as f:
+        pickle.dump(runner.train_loss, f)
+with open(r'./CNN/train_scores.pickle', 'wb') as f:
+        pickle.dump(runner.train_scores, f)
+with open(r'./CNN/dev_loss.pickle', 'wb') as f:
+        pickle.dump(runner.dev_loss, f)
+with open(r'./CNN/dev_scores.pickle', 'wb') as f:
+        pickle.dump(runner.dev_scores, f)
 
 _, axes = plt.subplots(1, 2)
 axes.reshape(-1)

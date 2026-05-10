@@ -59,9 +59,16 @@ class RunnerM():
                 if self.scheduler is not None:
                     self.scheduler.step()
                 
-                dev_score, dev_loss = self.evaluate(dev_set)
-                self.dev_scores.append(dev_score)
-                self.dev_loss.append(dev_loss)
+                if iteration == int(X.shape[0] / self.batch_size):
+                    # 决定模型是否保存的每个epoch最后一次评测使用全部验证样本评测
+                    dev_score, dev_loss = self.evaluate(dev_set, datasize=None)
+                    self.dev_scores.append(dev_score)
+                    self.dev_loss.append(dev_loss)
+                else:
+                    # 普通interaction只用200个验证样本评测
+                    dev_score, dev_loss = self.evaluate(dev_set, datasize=200)
+                    self.dev_scores.append(dev_score)
+                    self.dev_loss.append(dev_loss)
 
                 if (iteration) % log_iters == 0:
                     print(f"epoch: {epoch}, iteration: {iteration}")
@@ -75,7 +82,13 @@ class RunnerM():
                 best_score = dev_score
         self.best_score = best_score
 
-    def evaluate(self, data_set):
+
+    def evaluate(self, data_set, datasize):
+        '''增加datasize参数，控制每个interation评测的样本数量，节省评测时间'''
+        if datasize is not None:
+            X, y = data_set
+            idx = np.random.permutation(range(X.shape[0]))[:datasize]
+            data_set = [X[idx], y[idx]]
         X, y = data_set
         logits = self.model(X)
         loss = self.loss_fn(logits, y)

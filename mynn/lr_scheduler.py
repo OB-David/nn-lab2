@@ -35,4 +35,10 @@ class MultiStepLR(scheduler):
             self.optimizer.init_lr *= self.gamma
 
 class ExponentialLR(scheduler):
-    pass
+    def __init__(self, optimizer, gamma=0.99) -> None:
+        super().__init__(optimizer)
+        self.gamma = gamma
+
+    def step(self) -> None:
+        self.step_count += 1
+        self.optimizer.init_lr *= self.gamma
