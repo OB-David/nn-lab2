@@ -1,33 +1,56 @@
-<<<<<<< HEAD
-### Start Up
+# NN-PJ1: MNIST Classification
 
-First look into the `dataset_explore.ipynb` and get familiar with the data.
+Implement MLP and CNN using a custom deep learning framework for handwritten digit classification on the MNIST dataset.
 
-### Codes need your implementation
+## Project Structure
 
-1. `op.py` 
-   Implement the forward and backward function of `class Linear`
-   Implement the `MultiCrossEntropyLoss`. Note that the `Softmax` layer could be included in the `MultiCrossEntropyLoss`.
-   Try to implement `conv2D`, do not worry about the efficiency.
-   You're welcome to implement other complicated layer (e.g.  ResNet Block or Bottleneck)
-2. `models.py` You may freely edit or write your own model structure.
-3. `mynn/lr_scheduler.py` You may implement different learning rate scheduler in it.
-4. `MomentGD` in `optimizer.py`
-5. Modifications in `runner.py` if needed when your model structure is slightly different from the given example.
+```
+mynn/                  # Neural network framework
+├── op.py             # Linear, Conv2D, MultiCrossEntropyLoss
+├── models.py         # Model_MLP, Model_CNN
+├── optimizer.py      # SGD, MomentGD
+├── lr_scheduler.py   # MultiStepLR, StepLR
+├── runner.py         # Training pipeline
+└── metric.py         # Evaluation metrics
+draw_tools/          # Visualization tools
+├── plot.py           # Training curves (loss, accuracy)
+├── confusion.py      # Confusion matrix
+├── heatmap.py        # Weight heatmap
+├── misclassified.py  # Misclassified samples analysis
+├── compare_train.py  # Multi-model comparison
+└── draw.py           # Hand-drawn input tool
+dataset/             # MNIST data
+test_train.py        # Training script
+test_model.py        # Testing script
+```
 
+## Core Implementation
 
-### Train the model.
+| Module | Content |
+|--------|---------|
+| `op.py` | Linear layer, Conv2D, MultiCrossEntropyLoss (with built-in Softmax) |
+| `models.py` | Model_MLP, Model_CNN |
+| `optimizer.py` | SGD, MomentGD |
+| `lr_scheduler.py` | MultiStepLR, StepLR |
 
-Open test_train.py, modify parameters and run it.
+## Quick Start
 
-If you want to train the model on your own dataset, just change the values of variable *train_images_path* and *train_labels_path*
+**Train Model**
+```bash
+python test_train.py
+```
+Modify model type (MLP/CNN), optimizer, learning rate scheduling, and path parameters in the script.
 
-### Test the model.
+**Test Model**
+```bash
+python test_model.py
+```
+Specify the model weight path for evaluation.
 
-Open test_model.py, specify the saved model's path and the test dataset's path, then run the script, the script will output the accuracy on the test dataset.
+## Dataset
 
+[MNIST Handwritten Digit Dataset](http://yann.lecun.com/exdb/mnist/)
 
+## Weights
 
-=======
-# nn-lab2
->>>>>>> 3eb9b26d4ccfdfdc9166c433b186838cbf545345
+https://huggingface.co/OB-David/MNIST
