@@ -53,4 +53,4 @@ Specify the model weight path for evaluation.
 
 ## Weights
 
-https://huggingface.co/OB-David/MNIST
+https://huggingface.co/OB-David/NN-PJ1
